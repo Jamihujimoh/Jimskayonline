@@ -5,9 +5,10 @@ import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/fi
 import { collection, addDoc, serverTimestamp, doc, query, orderBy, limit, getDocs, updateDoc, setDoc } from 'firebase/firestore';
 import { jimskayChat } from '@/ai/flows/jimskay-chat-flow';
 import { adminChat } from '@/ai/flows/admin-agent-flow';
-import { Send, Loader2, Mic, X, Paperclip, FileText, FolderOpen, Camera } from 'lucide-react';
+import { Send, Loader2, Mic, X, Paperclip, FileText, FolderOpen, Camera, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { clearAiTodos } from '@/components/ChatTodos';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -892,7 +893,7 @@ export function ChatInput({ chatId, onChatCreated, onThinkingChange, interfaceMo
 
         <div className="flex items-end gap-2.5">
           <div
-            className={`input-pill flex-1 min-h-[56px] ${isListening || selectedImages.length || selectedFile ? 'ring-1 ring-primary/30' : ''}`}
+            className={`input-pill chat-composer flex-1 min-h-[56px] ${isListening || selectedImages.length || selectedFile ? 'ring-1 ring-primary/30' : ''}`}
           >
             <input
               type="file"
@@ -916,36 +917,39 @@ export function ChatInput({ chatId, onChatCreated, onThinkingChange, interfaceMo
               onChange={handleFolderSelect}
             />
 
-            <button
-              type="button"
-              onClick={() => {
-                if (fileInputRef.current) fileInputRef.current.value = '';
-                fileInputRef.current?.click();
-              }}
-              className="h-10 w-10 mb-1 shrink-0 rounded-full flex items-center justify-center text-white/30 hover:text-primary hover:bg-white/[0.05] transition-all"
-              title="Attach image"
-            >
-              <Camera className="w-5 h-5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => documentInputRef.current?.click()}
-              disabled={interfaceMode === 'admin'}
-              className="h-10 w-10 mb-1 shrink-0 rounded-full flex items-center justify-center text-white/30 hover:text-primary hover:bg-white/[0.05] transition-all disabled:opacity-30"
-              title="Attach any file"
-            >
-              <Paperclip className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => folderInputRef.current?.click()}
-              disabled={interfaceMode === 'admin'}
-              className="h-10 w-10 mb-1 shrink-0 rounded-full flex items-center justify-center text-white/30 hover:text-primary hover:bg-white/[0.05] transition-all disabled:opacity-30"
-              title="Attach a folder"
-            >
-              <FolderOpen className="w-5 h-5" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open attachment and voice menu"
+                  title="Attachments and voice"
+                  className="chat-composer-menu h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-white/55 hover:text-primary hover:bg-white/[0.05] transition-colors"
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56 border-white/10 bg-[#111821] text-white shadow-2xl">
+                <DropdownMenuItem onSelect={() => {
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  fileInputRef.current?.click();
+                }}>
+                  <Camera />
+                  Add image
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={interfaceMode === 'admin'} onSelect={() => documentInputRef.current?.click()}>
+                  <Paperclip />
+                  Attach file
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={interfaceMode === 'admin'} onSelect={() => folderInputRef.current?.click()}>
+                  <FolderOpen />
+                  Attach folder
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={toggleListening}>
+                  <Mic />
+                  {isListening ? 'Stop voice input' : 'Start voice input'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <Textarea
               ref={textareaRef}
@@ -959,20 +963,10 @@ export function ChatInput({ chatId, onChatCreated, onThinkingChange, interfaceMo
                     ? 'Admin command...'
                     : `Message Jimskay AI (${activeMode.toUpperCase()} mode)`
               }
-              className="flex-1 min-h-[48px] max-h-[240px] resize-none bg-transparent border-0 focus-visible:ring-0 text-[16px] md:!text-[16px] font-medium py-3.5 text-white scrollbar-none leading-relaxed placeholder:text-white/25"
+              className="chat-composer-input flex-1 min-h-[48px] max-h-[240px] resize-none bg-transparent border-0 focus-visible:ring-0 text-[16px] md:!text-[16px] font-medium py-3.5 text-white scrollbar-none leading-relaxed placeholder:text-white/25"
               rows={1}
             />
 
-            <button
-              type="button"
-              onClick={toggleListening}
-              className={`h-10 w-10 mb-1 shrink-0 rounded-full flex items-center justify-center transition-all ${
-                isListening ? 'text-primary animate-pulse bg-primary/10' : 'text-white/30 hover:text-primary hover:bg-white/[0.05]'
-              }`}
-              title="Voice input"
-            >
-              <Mic className="w-5 h-5" />
-            </button>
           </div>
 
           <button

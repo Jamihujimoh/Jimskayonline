@@ -251,8 +251,8 @@ export function Sidebar({ currentChatId, onSelectChat, onClose }: {
         <div className="h-px flex-1 bg-white/[0.05]" />
       </div>
 
-      <ScrollArea className="flex-1 px-3 min-h-0">
-        <div className="space-y-1 pb-4">
+      <ScrollArea className="sidebar-chat-scroll flex-1 w-full min-w-0 px-3 min-h-0">
+        <div className="w-full min-w-0 space-y-1 pb-4">
           {isChatsLoading ? (
             <div className="py-10 text-center">
               <Loader2 className="w-5 h-5 animate-spin text-primary/40 mx-auto" />
@@ -267,7 +267,7 @@ export function Sidebar({ currentChatId, onSelectChat, onClose }: {
                     onClose();
                   }}
                   className={cn(
-                    'w-full text-left p-3 rounded-xl transition-all border border-transparent',
+                    'w-full min-w-0 text-left p-3 rounded-xl transition-all border border-transparent',
                     currentChatId === chat.id
                       ? 'bg-white/[0.07] border-white/[0.08]'
                       : 'hover:bg-white/[0.04]'

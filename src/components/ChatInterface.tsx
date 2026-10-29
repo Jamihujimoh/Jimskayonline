@@ -89,16 +89,16 @@ export function ChatInterface({ onBackToLanding }: { onBackToLanding: () => void
     <div className="flex h-[100dvh] w-full bg-background overflow-hidden fixed inset-0">
       {/* Mobile overlay */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/70 transition-opacity duration-300 md:hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-[60] bg-black/70 transition-opacity duration-300 lg:hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsSidebarOpen(false)}
       />
 
       {/* Sidebar: permanent on desktop (collapsible), off-canvas on mobile */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-[70] h-full w-[340px] bg-[#0e0f22] border-r border-white/[0.06] transition-all duration-300 transform md:relative md:translate-x-0 shrink-0',
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-          isSidebarCollapsed ? 'md:w-0 md:overflow-hidden md:border-0' : 'md:w-[340px]'
+          'fixed top-0 left-0 z-[70] h-full w-[340px] bg-[#0e0f22] border-r border-white/[0.06] transition-all duration-300 transform lg:relative lg:translate-x-0 shrink-0',
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          isSidebarCollapsed ? 'lg:w-0 lg:overflow-hidden lg:border-0' : 'lg:w-[340px]'
         )}
       >
         <Sidebar

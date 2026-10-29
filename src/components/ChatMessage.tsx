@@ -152,7 +152,7 @@ const markdownComponents = {
 
   // FIXED: <div> instead of <p> to avoid nested-paragraph hydration errors
   p: ({ node, ...props }: any) => (
-    <div className="mb-4 leading-[1.75] whitespace-pre-wrap last:mb-0" {...props} />
+    <div className="mb-3 leading-[1.65] whitespace-pre-wrap last:mb-0" {...props} />
   ),
 
   ul: ({ node, ...props }: any) => (
@@ -164,7 +164,7 @@ const markdownComponents = {
   ),
 
   li: ({ node, ...props }: any) => (
-    <li className="leading-[1.75] pl-1" {...props} />
+    <li className="leading-[1.65] pl-1" {...props} />
   ),
 
   table: ({ node, ...props }: any) => (
@@ -567,7 +567,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ id, chatId, type, role
 
   return (
     <div className="flex flex-col w-full">
-      <div className="relative text-white/90 text-[20px] sm:text-[22px] leading-[1.8]">
+      <div className="relative text-white/90 text-[18px] sm:text-[19px] leading-[1.65]">
         {/* Model images (rare) */}
         {(imageUrls && imageUrls.length > 0 ? imageUrls : imageUrl ? [imageUrl] : []).map((img, index) => (
           <div key={`${img}-${index}`} className="relative mb-3 rounded-xl overflow-hidden border border-white/10 max-w-sm bg-black/20 shadow-md animate-in fade-in duration-300">
@@ -700,7 +700,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ id, chatId, type, role
 };
 
 function ChatArtifactPreview({ artifact }: { artifact: ChatArtifact }) {
-  const [previewHeight, setPreviewHeight] = useState(artifact.kind === 'svg' ? 260 : 360);
+  const [previewHeight, setPreviewHeight] = useState(artifact.kind === 'svg' ? 200 : 240);
   const [frameId] = useState(() => `artifact-${Math.random().toString(36).slice(2)}`);
   const contentSecurityPolicy = artifact.kind === 'svg'
     ? "default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; frame-src 'none'; object-src 'none';"
@@ -717,7 +717,7 @@ function ChatArtifactPreview({ artifact }: { artifact: ChatArtifact }) {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type !== 'jimskay-artifact-height' || event.data.id !== frameId) return;
-      const nextHeight = Math.max(180, Math.min(520, Number(event.data.height) + 8));
+      const nextHeight = Math.max(180, Math.min(300, Number(event.data.height) + 8));
       if (Number.isFinite(nextHeight)) setPreviewHeight(nextHeight);
     };
     window.addEventListener('message', handleMessage);

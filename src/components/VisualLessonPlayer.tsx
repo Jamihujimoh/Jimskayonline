@@ -1742,8 +1742,9 @@ export function VisualLessonPlayer({ lesson, videoClips = [] }: { lesson: Visual
 
       for (let i = 0; i < lesson.scenes.length; i++) {
         const scene = lesson.scenes[i];
-        const video = hasAllVeoClips ? veoVideosRef.current.get(i) : undefined;
-        if (hasAllVeoClips && !video) {
+        const hasVideoClip = clipsByScene.has(i);
+        const video = hasVideoClip ? veoVideosRef.current.get(i) : undefined;
+        if (hasVideoClip && !video) {
           throw new Error(`The generated video for scene ${i + 1} is unavailable.`);
         }
         if (video) {
@@ -1851,7 +1852,7 @@ export function VisualLessonPlayer({ lesson, videoClips = [] }: { lesson: Visual
   };
 
   return (
-    <div className="my-5 overflow-hidden rounded-3xl border border-white/10 bg-black/30 shadow-2xl">
+    <div className="mx-auto my-5 w-full max-w-[640px] overflow-hidden rounded-3xl border border-white/10 bg-black/30 shadow-2xl">
       <div className="border-b border-white/10 px-4 py-3 flex items-center justify-between gap-3">
         <div className="min-w-0"><div className="text-sm font-bold text-white truncate">{lesson.title}</div><div className="text-[10px] uppercase tracking-[0.2em] text-white/35">Narrated visual lesson · scene {current.index + 1}/{lesson.scenes.length}</div></div>
         <div className="flex items-center gap-1.5"><Button size="icon" variant="ghost" onClick={() => setMuted(v => !v)} title={muted ? 'Unmute narration' : 'Mute narration'}>{muted ? <VolumeX className="h-4 w-4"/> : <Volume2 className="h-4 w-4"/>}</Button></div>

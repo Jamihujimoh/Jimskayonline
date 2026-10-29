@@ -50,14 +50,14 @@ export function ChatHeader({
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden rounded-full h-8 w-8 text-white/50 hover:bg-white/5 hover:text-white"
+          className="lg:hidden rounded-full h-8 w-8 text-white/50 hover:bg-white/5 hover:text-white"
           onClick={onToggleSidebar}
           title="Open sidebar"
         >
           <Menu className="w-4 h-4" />
         </Button>
 
-        <div className="hidden md:flex items-center gap-0.5">
+        <div className="hidden lg:flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"

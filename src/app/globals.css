@@ -90,7 +90,7 @@ img, svg { display: block; max-width: 100%; }
    Apply `.app-bg` to every full-canvas root so the animated
    multi-color backdrop shows on every page. Replaces solid darks.
    ──────────────────────────────────────────────────────────────── */
-.app-bg {
+:where(.app-bg) {
   position: relative;
   background:
     linear-gradient(rgba(126, 255, 74, 0.035) 1px, transparent 1px),
@@ -516,7 +516,7 @@ img, svg { display: block; max-width: 100%; }
 
 /* AI response prose */
 .ai-prose {
-  @apply w-full text-[25px] sm:text-[27px] leading-[1.78] text-white/90;
+  @apply w-full text-[18px] sm:text-[19px] leading-[1.65] text-white/90;
   overflow-wrap: anywhere;
   min-width: 0;
 }
@@ -525,7 +525,7 @@ img, svg { display: block; max-width: 100%; }
 .ai-prose > *:last-child { margin-bottom: 0; }
 
 .ai-prose p {
-  @apply my-7;
+  @apply my-3;
 }
 
 .ai-prose h1,
@@ -665,8 +665,8 @@ img, svg { display: block; max-width: 100%; }
   width: 100%;
   min-width: 0;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 20px;
-  line-height: 1.8;
+  font-size: 18px;
+  line-height: 1.65;
   overflow-wrap: anywhere;
   word-break: normal;
 }
@@ -676,11 +676,11 @@ img, svg { display: block; max-width: 100%; }
 
 /* Paragraphs */
 .ai-prose p {
-  margin: 0 0 1rem;
+  margin: 0 0 0.75rem;
 }
 
 .ai-prose p + p {
-  margin-top: 1.15rem;
+  margin-top: 0.75rem;
 }
 
 /* Headings */
@@ -975,6 +975,21 @@ img, svg { display: block; max-width: 100%; }
   box-shadow: 0 0 0 3px hsla(265, 95%, 74%, 0.14), 0 0 34px -10px hsla(190, 100%, 60%, 0.5), 0 14px 40px -14px rgba(6, 6, 20, 0.9);
 }
 
+@media (max-width: 640px) {
+  .chat-composer {
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .chat-composer-input {
+    flex: 1 1 0%;
+    width: 0;
+    min-width: 0;
+    padding: 8px 4px;
+    line-height: 1.4;
+  }
+}
+
 /* Sidebar nav */
 .sidebar-nav-btn {
   @apply w-full flex items-center gap-3 rounded-xl px-3 h-12 text-[17px] font-semibold tracking-tight transition-all duration-200 border border-transparent;
@@ -996,6 +1011,13 @@ img, svg { display: block; max-width: 100%; }
 .sidebar-nav-btn.active svg { color: hsl(190 100% 70%); filter: drop-shadow(0 0 6px hsla(190, 100%, 60%, 0.8)); }
 .sidebar-nav-btn svg { @apply w-[18px] h-[18px] text-white/40 transition-colors; }
 .sidebar-nav-btn:hover svg { @apply text-white/80; }
+
+.sidebar-chat-scroll [data-radix-scroll-area-viewport] > div {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
 
 /* Reasoned-copy loading shimmer bar (ThinkingBlock) */
 .thinking-progress-bar {

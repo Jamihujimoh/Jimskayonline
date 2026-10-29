@@ -9,11 +9,11 @@
 import { z } from 'genkit';
 import type { VisualLesson } from '@/lib/visual-lesson';
 import { clampLesson } from '@/lib/visual-lesson';
-import { createLessonCreationProject, type ProductionShot } from '@/lib/creation-pipeline';
+import { createLessonCreationProject, MAX_VIDEO_SCENES, type ProductionShot } from '@/lib/creation-pipeline';
 
 export const VideoProductionInputSchema = z.object({
   lesson: z.any(),
-  maxScenes: z.number().int().min(1).max(8).default(8),
+  maxScenes: z.number().int().min(1).max(MAX_VIDEO_SCENES).default(MAX_VIDEO_SCENES),
   quality: z.enum(['educational', 'cinematic', 'documentary', 'diagrammatic']).optional(),
 });
 

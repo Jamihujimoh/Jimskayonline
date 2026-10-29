@@ -28,6 +28,7 @@ BASE SHAPE:
       "durationMs":8000,
       "narration":"What the teacher says during this scene.",
       "caption":"Short scene caption",
+      "videoVisualDescription":"Concrete shot direction showing the actual requested subject performing this scene's action.",
       "visualMode":"cinematic",
       "focusElementId":"main-object",
       "keyTakeaway":"The one idea the learner should remember.",
@@ -149,15 +150,19 @@ code blocks, data flow, execution states, architecture, terminal/process diagram
 
 For other subjects, invent an appropriate educational representation rather than defaulting to generic circles and rectangles.
 
-SCENE STRUCTURE:
-Prefer:
-1. establish context,
-2. introduce the main object,
-3. explain the relationship/mechanism,
-4. demonstrate an example,
-5. recap or test understanding.
+GENERATED VIDEO SUBJECT FIDELITY:
+- For every scene, write videoVisualDescription as a concrete shot direction: name the recognizable subject, setting, visible action, framing, and motion. Do not describe only a concept, metaphor, or diagram.
+- When the request is about a tangible real-world object or process, make that object/process the large, recognizable, dominant subject in the generated footage. Use live-action or polished 3D/2D character animation as appropriate; do not substitute line art, floating arrows, abstract geometry, or a generic diagram for the requested subject.
+- Show a distinct useful action for each scene and preserve the same subject identity, appearance, scale, and environment across connected scenes.
+- Reserve diagrams, vectors, labels, and equations for the programmatic lesson layer unless the user explicitly asks for diagram-style video.
+- For abstract topics without a tangible subject, choose a specific subject-appropriate visualization instead of generic decorative lines.
+- Use visualMode "cinematic" for footage centered on real or animated physical subjects; use "diagram" only when a diagram is the requested visual style.
 
-Use 4–8 scenes for substantial lessons. Do not force exactly four scenes if the topic genuinely requires a different number.
+SCENE STRUCTURE AND RUNTIME:
+- For a normal explanatory video without a requested duration, target 2–4 minutes of spoken narration (roughly 260–520 words) across 12–16 scenes. Give each scene a distinct teaching purpose and about 20–40 useful narration words; do not pad or repeat.
+- Cover the complete explanation: context, parts, mechanism or sequence, cause-and-effect, a concrete example or observation, common misconception or limitation where relevant, and recap. Adapt these to the subject rather than forcing irrelevant sections.
+- Respect an explicit requested duration or a request for a short clip; scale scene count and narration to fit it.
+- Keep each generated shot focused on one visible action, but let narration explain the full step. Do not compress a multi-step mechanism into a single scene.
 
 KNOWLEDGE CHECKS:
 When useful, add a checkpoint to reinforce a concept:
@@ -203,7 +208,7 @@ CREATION OBJECTIVES:
 - Programmatic overlays are authoritative for text, equations, labels, axes, and precise diagrams.
 - Generated video is responsible for motion, physical demonstration, environment, and cinematic context—not mathematical typography.
 - Each scene must have a clear teaching purpose: establish, introduce, explain, demonstrate, derive, compare, emphasize, check, or recap.
-- Prefer 4–8 scenes for substantial lessons while allowing shorter or longer lessons when the subject requires it.
+- Prefer 12–16 scenes for a standard explainer video, with runtime scaled to the user's request; shorter or longer lessons are appropriate when explicitly requested.
 - Every scene needs a meaningful visual beat plan and narration alignment.
 
 CROSS-MEDIA CONSISTENCY:

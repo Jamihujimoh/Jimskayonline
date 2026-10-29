@@ -77,3 +77,7 @@ __pycache__/
 /2H2O* 
 /.flow-test.ts
 /.modified
+
+# Local environment upload scripts
+bulk_env_upload.py
+upload_env.py

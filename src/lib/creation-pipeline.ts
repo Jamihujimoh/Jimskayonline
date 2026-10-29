@@ -6,6 +6,8 @@
 
 import type { VisualLesson, VisualLessonScene } from '@/lib/visual-lesson';
 
+export const MAX_VIDEO_SCENES = 16;
+
 export type CreationAssetKind =
   | 'diagram'
   | 'equation'
@@ -107,6 +109,7 @@ function sceneShotPrompt(lesson: VisualLesson, scene: VisualLessonScene): string
     `Scene: ${scene.title}.`,
     `Teaching purpose: ${purposeForScene(scene)}.`,
     `Narration meaning: ${scene.narration}.`,
+    scene.videoVisualDescription ? `Directed video shot: ${scene.videoVisualDescription}.` : '',
     scene.keyTakeaway ? `Key takeaway: ${scene.keyTakeaway}.` : '',
     scene.focusElementId ? `Primary subject: ${scene.focusElementId}.` : '',
     elementSummary ? `Underlying visual subjects: ${elementSummary}.` : '',
@@ -134,7 +137,7 @@ export function buildNarrationSegments(lesson: VisualLesson): NarrationSegment[]
 }
 
 export function buildProductionShots(lesson: VisualLesson): ProductionShot[] {
-  return lesson.scenes.slice(0, 8).map((scene, index) => {
+  return lesson.scenes.slice(0, MAX_VIDEO_SCENES).map((scene, index) => {
     const purpose = purposeForScene(scene);
     const cameraMotion = scene.camera || scene.visualBeats?.some((beat) => beat.camera)
       ? 'slow controlled push or target transition matching the storyboard; no shake'
@@ -155,6 +158,7 @@ export function buildProductionShots(lesson: VisualLesson): ProductionShot[] {
         'subtitles', 'captions', 'logos', 'watermarks', 'UI', 'random text',
         'invented equations', 'invented numbers', 'unrelated objects',
         'decorative particle effects', 'camera shake',
+        ...(scene.visualMode === 'cinematic' ? ['flat line art', 'abstract vector lines', 'schematic replacing the requested subject'] : []),
       ].join(', '),
       durationSeconds: 5,
       continuityKey: scene.focusElementId || scene.id,
@@ -183,7 +187,7 @@ export function validateCreationProject(project: LessonCreationProject): Creatio
 
   checks.semanticIds = errors.every((error) => !error.startsWith('Duplicate semantic element ID'));
   checks.narrationCoverage = project.narration.length >= project.lesson.scenes.filter((scene) => scene.narration.trim()).length;
-  checks.shotCoverage = project.shots.length >= Math.min(8, project.lesson.scenes.length);
+  checks.shotCoverage = project.shots.length >= Math.min(MAX_VIDEO_SCENES, project.lesson.scenes.length);
   checks.programmaticOverlays = project.shots.every((shot) => shot.overlayPolicy === 'programmatic-only');
   checks.noEmptyScenes = project.lesson.scenes.every((scene) => scene.elements.length > 0);
 

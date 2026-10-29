@@ -83,6 +83,7 @@ export type VisualLessonScene = {
   /** V3 director fields. All are optional for backward compatibility. */
   visualBeats?: VisualLessonBeat[];
   beats?: VisualLessonBeat[];
+  videoVisualDescription?: string;
   camera?: VisualLessonCamera;
   transition?: {
     type?: 'cut' | 'fade' | 'crossfade' | 'zoom' | 'slide' | 'morph' | 'wipe';
@@ -287,6 +288,9 @@ export function clampLesson(lesson: VisualLesson): VisualLesson {
       durationMs,
       narration: String(scene.narration || '').slice(0, 6000),
       caption: scene.caption ? String(scene.caption).slice(0, 300) : undefined,
+      videoVisualDescription: scene.videoVisualDescription
+        ? String(scene.videoVisualDescription).slice(0, 1200)
+        : undefined,
       elements,
       visualBeats: beats.length ? beats : undefined,
       beats: undefined,

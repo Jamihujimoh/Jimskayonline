@@ -12,7 +12,7 @@ import { stageVideo } from './video-file-store';
 import { isChatModelId } from '@/lib/chat-models';
 import { extractChatArtifact, hasMeaningfulVisualContent, hasResponsiveVisualStructure, hasUnrequestedGameUi, lacksAutoplayAnimation, matchesRequestedSubject, type ChatArtifact } from '@/lib/chat-artifacts';
 import { validateVisualArtifactQuality } from '@/lib/visual-artifact-quality';
-import { createLessonCreationProject } from '@/lib/creation-pipeline';
+import { createLessonCreationProject, MAX_VIDEO_SCENES } from '@/lib/creation-pipeline';
 import { PROFESSIONAL_VISUAL_ARTIFACT_PROTOCOL } from '@/ai/prompts/visual-artifact-protocol';
 import { VISUAL_LESSON_PROTOCOL } from '@/ai/prompts/visual-lesson-protocol';
 import { clampLesson, parseVisualLessonMarker, validateVisualLesson, type VisualLesson } from '@/lib/visual-lesson';
@@ -377,6 +377,11 @@ export async function jimskayChat(input: z.infer<typeof JimskayInputSchema>) {
     };
   }
 
+  const isSimpleGreeting = /^(?:hi|hello|hey|yo|good morning|good afternoon|good evening)[.!?\s]*$/i.test(latestUserMessage.trim());
+  if (isSimpleGreeting && !latestFile && !input.imageUrl && !input.imageUrls?.length) {
+    return { text: 'Hi! What can I help you with?' };
+  }
+
   const resolvedMode = input.currentUser?.isVerifiedCreator === true
     ? 'creator'
     : (input.activeMode || 'normal');
@@ -613,7 +618,12 @@ Do not omit unchanged files that must remain in the archive. Only return an arch
 - Keep explanations outside the update markers. Do not return partial file contents.
 ` : ''}
 
-${PROFESSIONAL_VISUAL_ARTIFACT_PROTOCOL}
+${shouldUseVisualArtifact ? PROFESSIONAL_VISUAL_ARTIFACT_PROTOCOL : !shouldUseVisualLesson ? `
+PLAIN RESPONSE MODE:
+- Answer the latest user request directly; do not continue a topic or task from earlier history unless asked.
+- Do not create HTML, SVG, charts, diagrams, or other visual artifacts unless the latest request explicitly asks for one.
+- Do not invent a deliverable or claim to have created one when the user did not request it.
+` : ''}
 ${shouldUseVisualLesson ? `\n${VISUAL_LESSON_PROTOCOL}\n` : ''}
 ${explicitlyRejectsVisual ? `
 EXPLICIT VISUAL RESTRICTION:
@@ -808,7 +818,7 @@ MANDATORY VISUAL RESPONSE:
   const videoClips: Array<{ sceneIndex: number; downloadUrl: string; filename: string }> = [];
   let videoError: string | undefined;
   if (shouldUseVisualLesson && visualLesson) {
-    const scenes = visualLesson.scenes.slice(0, 8);
+    const scenes = visualLesson.scenes.slice(0, MAX_VIDEO_SCENES);
     const generatedClips = await Promise.allSettled(scenes.map(async (scene, sceneIndex) => {
       const video = await generateVideo({
         aspectRatio: '16:9',
@@ -816,11 +826,15 @@ MANDATORY VISUAL RESPONSE:
         cameraMotion: scene.videoShot?.cameraMotion,
         continuityKey: scene.videoShot?.continuityKey,
         teachingPurpose: scene.videoShot?.purpose as 'establish' | 'introduce' | 'explain' | 'demonstrate' | 'derive' | 'compare' | 'emphasize' | 'check' | 'recap' | undefined,
-        negativePrompt: 'subtitles, captions, labels, logos, watermarks, UI, random text, invented equations, invented numbers, unrelated objects, decorative particle effects, camera shake',
+        negativePrompt: [
+          'subtitles, captions, labels, logos, watermarks, UI, random text, invented equations, invented numbers, unrelated objects, decorative particle effects, camera shake',
+          ...(scene.visualMode === 'cinematic' ? ['flat line art, abstract vector lines, schematic replacing the requested subject'] : []),
+        ].join(', '),
         prompt: [
-          'Create a polished five-second educational video clip for a narrated lesson.',
+          'Create one polished, coherent generated video shot for this narrated lesson scene.',
           `Lesson topic: ${visualLesson.title}${visualLesson.subject ? ` (${visualLesson.subject})` : ''}.`,
           `This is scene ${sceneIndex + 1} of ${scenes.length}: ${scene.title}.`,
+          scene.videoVisualDescription ? `Concrete visual direction: ${scene.videoVisualDescription}` : '',
           `Show this specific teaching idea: ${scene.narration}`,
           scene.caption ? `Visual emphasis: ${scene.caption}.` : '',
           scene.keyTakeaway ? `Teaching takeaway: ${scene.keyTakeaway}.` : '',
@@ -832,9 +846,12 @@ MANDATORY VISUAL RESPONSE:
               ).join('; ')}.`
             : '',
           'Use clear, intentional composition and purposeful motion that directly demonstrates the stated concept.',
+          scene.visualMode === 'cinematic'
+            ? 'Show the actual recognizable physical subject large and prominent in a real environment or polished 3D animation. Do not replace it with line drawings, vectors, abstract lines, arrows, icons, or a schematic.'
+            : '',
           'No titles, subtitles, labels, written words, logos, borders, UI, diagrams with invented text, or watermarks; the application adds captions and educational overlays.',
           'Keep the visual directly relevant to the stated topic. Do not invent facts, equations, numbers, labels, or switch to an unrelated subject.',
-          'Prefer one dominant teaching action over decorative motion. Preserve continuity of the main subject throughout the clip.',
+          'Prefer one dominant teaching action over decorative motion. Preserve continuity of the main subject throughout the clip; keep it visible and large enough to inspect.',
         ].filter(Boolean).join(' '),
       });
       const slug = `${visualLesson.title}-scene-${sceneIndex + 1}`
