@@ -1,0 +1,30 @@
+{
+  "feature": "Jimskay Universal File Workspace",
+  "modified": [
+    "src/components/ChatInput.tsx",
+    "src/components/ChatMessage.tsx",
+    "src/ai/flows/jimskay-chat-flow.ts"
+  ],
+  "added": [
+    "src/lib/universal-file-workspace.ts",
+    "src/app/api/files/inspect/route.ts",
+    "src/app/api/files/rebuild/route.ts",
+    "src/app/api/files/package-folder/route.ts",
+    "src/UNIVERSAL_FILE_WORKSPACE_SETUP.md"
+  ],
+  "dependencies": [
+    "jszip",
+    "pdf-parse@1.1.1",
+    "mammoth",
+    "xlsx",
+    "docx",
+    "pdf-lib"
+  ],
+  "notes": [
+    "Folder selection is packaged into ZIP server-side.",
+    "Original files are uploaded to Firebase Storage.",
+    "Supported extraction: text/code, PDF, DOCX, XLS/XLSX, ZIP.",
+    "Supported rebuilding: text/code, DOCX, XLS/XLSX, PDF, ZIP.",
+    "Unknown binary formats are stored but not falsely claimed editable."
+  ]
+}

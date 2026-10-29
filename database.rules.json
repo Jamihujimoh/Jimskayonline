@@ -1,0 +1,36 @@
+{
+  "rules": {
+    "devices": {
+      ".read": "auth != null && auth.uid === 'hackerai-server'",
+      ".write": false,
+      "$deviceId": {
+        ".read": "auth != null && (auth.uid === 'hackerai-server' || (auth.token.deviceId === $deviceId && auth.token.ownerUserId === data.child('userId').val()) || data.child('authUid').val() === auth.uid)",
+        ".write": "auth != null && (auth.uid === 'hackerai-server' || (auth.token.deviceId === $deviceId && auth.token.ownerUserId === newData.child('userId').val()) || (data.exists() && auth.uid === data.child('authUid').val() && auth.uid === newData.child('authUid').val() && newData.child('userId').val() === data.child('userId').val() && newData.child('deviceType').val() === data.child('deviceType').val()))"
+      }
+    },
+    "tasks": {
+      ".read": "auth != null && (auth.uid === 'hackerai-server' || auth.token.deviceId != null)",
+      ".write": false,
+      "$taskId": {
+        ".read": "auth != null && (auth.uid === 'hackerai-server' || (auth.token.deviceId === data.child('deviceId').val() && auth.token.ownerUserId === data.child('userId').val()))",
+        ".write": "auth != null && (auth.uid === 'hackerai-server' || (data.exists() && auth.token.deviceId === data.child('deviceId').val() && auth.token.ownerUserId === data.child('userId').val() && newData.child('deviceId').val() === data.child('deviceId').val() && newData.child('userId').val() === data.child('userId').val()))"
+      }
+    },
+    "phoneTasks": {
+      ".read": false,
+      ".write": false,
+      "$deviceId": {
+        ".indexOn": ["status"],
+        ".read": "auth != null && (auth.uid === 'hackerai-server' || (auth.token.deviceId === $deviceId && auth.token.ownerUserId === root.child('devices').child($deviceId).child('userId').val()) || auth.uid === root.child('devices').child($deviceId).child('authUid').val())",
+        ".write": "auth != null && (auth.uid === 'hackerai-server' || (auth.token.deviceId === $deviceId && auth.token.ownerUserId === root.child('devices').child($deviceId).child('userId').val()))",
+        "$taskId": {
+          ".write": "auth != null && (auth.uid === 'hackerai-server' || (auth.token.deviceId === $deviceId && auth.token.ownerUserId === root.child('devices').child($deviceId).child('userId').val()) || (auth.uid === root.child('devices').child($deviceId).child('authUid').val() && data.exists() && data.child('userId').val() === root.child('devices').child($deviceId).child('userId').val() && newData.child('userId').val() === data.child('userId').val()))"
+        }
+      }
+    },
+    "phonePairings": {
+      ".read": "auth != null && auth.uid === 'hackerai-server'",
+      ".write": "auth != null && auth.uid === 'hackerai-server'"
+    }
+  }
+}

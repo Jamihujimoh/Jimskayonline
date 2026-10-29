@@ -1,0 +1,3 @@
+<resources>
+    <string name="accessibility_service_description">Allows Jimskay AI to perform user-requested, visible accessibility actions after you enable this service in Android Settings.</string>
+</resources>

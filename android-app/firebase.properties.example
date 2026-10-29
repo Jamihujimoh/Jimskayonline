@@ -1,0 +1,6 @@
+# Copy this file to firebase.properties and replace with values from your Firebase project.
+# These are Firebase client configuration values, not service-account credentials.
+firebaseApiKey=YOUR_FIREBASE_WEB_API_KEY
+firebaseApplicationId=1:YOUR_PROJECT_NUMBER:android:YOUR_ANDROID_APP_ID
+firebaseProjectId=YOUR_FIREBASE_PROJECT_ID
+firebaseDatabaseUrl=https://YOUR_DATABASE_NAME-default-rtdb.firebaseio.com

@@ -1,0 +1,7 @@
+/firebase.properties
+/local.properties
+/.gradle/
+/build/
+/app/build/
+*.apk
+*.aab
