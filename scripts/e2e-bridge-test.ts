@@ -7,7 +7,7 @@ import { runLocalAgentTask } from '../src/ai/lib/local-agent-bridge';
 
 const SA_PATH = path.join(process.cwd(), 'local-agent', 'service-account.json');
 const DEVICE_ID = 'dev_08681c1b52c6da3a';
-const PROJECT_ID = 'jimskay-7da28';
+const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '';
 
 function base64url(buf: Buffer): string {
   return buf.toString('base64url');

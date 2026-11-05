@@ -1,10 +1,24 @@
+// Firebase web client configuration.
+// Values come from environment variables (set in Netlify → Site configuration →
+// Environment variables). Never hardcode them here.
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+
 export const firebaseConfig = {
-  "apiKey": "AIzaSyA9A8h52hox1Xdem0PE-VMl90ZgjI5hS4M",
-  "authDomain": "jimskay-7da28.firebaseapp.com",
-  "projectId": "jimskay-7da28",
-  "databaseURL": "https://jimskay-7da28-default-rtdb.firebaseio.com",
-  "storageBucket": "jimskay-7da28.firebasestorage.app",
-  "messagingSenderId": "313375430909",
-  "appId": "1:313375430909:web:bbe4cdcc6a9b397de78694",
-  "measurementId": "G-EYZJFE038E"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain:
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
+    (projectId ? `${projectId}.firebaseapp.com` : undefined),
+  projectId,
+  databaseURL:
+    process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ||
+    (projectId ? `https://${projectId}-default-rtdb.firebaseio.com` : undefined),
+  storageBucket:
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+    (projectId ? `${projectId}.firebasestorage.app` : undefined),
+  // The sender ID is the project number, which is embedded in the app ID ("1:<number>:web:<hash>").
+  messagingSenderId:
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || appId?.split(':')[1],
+  appId,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
