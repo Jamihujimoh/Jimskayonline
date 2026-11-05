@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildMathJaxDocumentHtml } from './pdf-engine';
+import { buildMathJaxDocumentHtml, sanitizePdfContent } from './pdf-engine';
 
 test('MathJax embeds inline, display, and chemistry expressions as SVGs', async () => {
   const html = await buildMathJaxDocumentHtml({
@@ -25,4 +25,17 @@ test('MathJax embeds inline, display, and chemistry expressions as SVGs', async 
     assert.match(svg, /^<svg\b/);
     assert.match(svg, /<path\b/);
   }
+});
+
+test('removes empty visual placeholders and trailing page breaks without dropping math', () => {
+  const cleaned = sanitizePdfContent([
+    'Pythagorean theorem: $$a^2 + b^2 = c^2$$',
+    '<div style="height:420px;background:#eef7ff"></div>',
+    '<figure class="image-placeholder"></figure>',
+    '<div class="page-break"></div>',
+  ].join('\n'));
+
+  assert.match(cleaned, /Pythagorean theorem/);
+  assert.match(cleaned, /\$\$a\^2 \+ b\^2 = c\^2\$\$/);
+  assert.doesNotMatch(cleaned, /height:420px|image-placeholder|page-break/);
 });

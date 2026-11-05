@@ -5,6 +5,7 @@ import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/fi
 import { collection, addDoc, serverTimestamp, doc, query, orderBy, limit, getDocs, updateDoc, setDoc } from 'firebase/firestore';
 import { jimskayChat } from '@/ai/flows/jimskay-chat-flow';
 import { adminChat } from '@/ai/flows/admin-agent-flow';
+import type { PdfInput } from '@/ai/flows/pdf-engine';
 import { Send, Loader2, Mic, X, Paperclip, FileText, FolderOpen, Camera, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,7 +30,7 @@ interface ChatInputProps {
   selectedModel: ChatModelId;
 }
 
-type PdfPayload = { base64Data?: string; downloadUrl?: string; filename: string };
+type PdfPayload = { recipe?: PdfInput; downloadUrl?: string; filename: string };
 
 // 📸 Native client-side image compression (fully bypasses Next.js component namespace conflicts)
 const compressImage = (file: File): Promise<string> => {
@@ -699,7 +700,9 @@ export function ChatInput({ chatId, onChatCreated, onThinkingChange, interfaceMo
             });
           }
         }
-        const stagedPdfPayload = pdfPayload?.downloadUrl
+        const stagedPdfPayload = pdfPayload?.recipe
+          ? { filename: pdfPayload.filename, recipe: pdfPayload.recipe }
+          : pdfPayload?.downloadUrl
           ? { filename: pdfPayload.filename, downloadUrl: pdfPayload.downloadUrl }
           : null;
         const responseText = response.text?.trim()
@@ -744,27 +747,6 @@ export function ChatInput({ chatId, onChatCreated, onThinkingChange, interfaceMo
           });
         }
 
-        if (pdfPayload?.base64Data && user) {
-          const base64Data = pdfPayload.base64Data;
-          const filename = pdfPayload.filename || 'document.pdf';
-          void (async () => {
-            try {
-              const binary = window.atob(base64Data);
-              const bytes = new Uint8Array(binary.length);
-              for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-              const storageRef = ref(storage, `users/${user.uid}/pdfs/${crypto.randomUUID()}-${filename}`);
-              const snapshot = await uploadBytes(storageRef, bytes, { contentType: 'application/pdf' });
-              await updateDoc(modelMessageRef, {
-                pdfPayload: { filename, downloadUrl: await getDownloadURL(snapshot.ref) },
-              });
-            } catch (uploadError) {
-              console.error('PDF upload failed:', uploadError);
-              await updateDoc(modelMessageRef, {
-                content: `${response.text?.trim() || 'Your PDF was generated.'}\n\n[PDF DOWNLOAD ERROR] The document was generated, but cloud storage could not finish uploading it.`,
-              }).catch(() => undefined);
-            }
-          })();
-        }
       }
     } catch (error: any) {
       console.error('Link Failure:', error);

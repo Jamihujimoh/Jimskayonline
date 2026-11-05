@@ -12,6 +12,7 @@ import { collection, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from '
 import { jimskayChat } from '@/ai/flows/jimskay-chat-flow';
 import { useToast } from '@/hooks/use-toast';
 import type { ChatArtifact } from '@/lib/chat-artifacts';
+import type { PdfInput } from '@/ai/flows/pdf-engine';
 import type { VisualLesson, VisualLessonVideoClip } from '@/lib/visual-lesson';
 import { VisualLessonPlayer } from '@/components/VisualLessonPlayer';
 import type { UniversalFileAttachment } from '@/lib/universal-file-workspace';
@@ -132,8 +133,9 @@ const markdownComponents = {
   ),
 
   a: ({ href, children }: any) => {
-    const isPdf = href && /(?:\/api\/pdf\/|\.pdf(?:$|\?))/i.test(href);
-    if (isPdf) return <PdfMarkdownLink href={href} children={children} />;
+    const isPdf = href && /\.pdf(?:$|\?)/i.test(href);
+    if (isPdf && /^\/api\/pdf\/[a-f0-9]{48}$/i.test(href)) return <PdfMarkdownLink href={href} children={children} />;
+    if (isPdf && href.startsWith('/')) return <span className="text-primary/80">{children}</span>;
 
     const isDirectImage = href && /\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i.test(href);
     if (isDirectImage) {
@@ -201,7 +203,7 @@ interface ChatMessageProps {
   type?: string;
   role: 'user' | 'model';
   text: string;
-  pdfPayload?: { base64Data?: string; downloadUrl?: string; filename: string } | null;
+  pdfPayload?: { recipe?: PdfInput; downloadUrl?: string; base64Data?: string; filename: string } | null;
   fileAttachment?: UniversalFileAttachment | null;
   updatedFile?: UniversalFileAttachment | null;
   imageUrl?: string | null;
@@ -211,7 +213,7 @@ interface ChatMessageProps {
   videoClips?: VisualLessonVideoClip[] | null;
 }
 
-type PdfPayload = { base64Data?: string; downloadUrl?: string; filename: string };
+type PdfPayload = { recipe?: PdfInput; downloadUrl?: string; base64Data?: string; filename: string };
 
 
 function MessageActions({ id, chatId, role, text }: { id?: string; chatId?: string; role: 'user' | 'model'; text: string }) {
@@ -299,7 +301,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ id, chatId, type, role
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
-  const pdfLinkMatch = text.match(/\[([^\]]+\.pdf)\]\((https?:\/\/[^)\s]+|\/api\/pdf\/[^)\s]+)\)/i);
+  const pdfLinkMatch = text.match(/\[([^\]]+\.pdf)\]\((\/api\/pdf\/[a-f0-9]{48})\)/i);
   const detectedPdfPayload: PdfPayload | null = pdfLinkMatch
     ? { filename: pdfLinkMatch[1], downloadUrl: pdfLinkMatch[2] }
     : null;
@@ -398,9 +400,35 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ id, chatId, type, role
   }, [artifact, afterArtifactText, beforeArtifactText, renderedText, role]);
 
   const handleDownload = async () => {
-    if (!effectivePdfPayload?.downloadUrl && !effectivePdfPayload?.base64Data) return;
+    if (!effectivePdfPayload?.recipe && !effectivePdfPayload?.downloadUrl && !effectivePdfPayload?.base64Data) return;
     setIsDownloading(true);
     try {
+      if (effectivePdfPayload.recipe) {
+        if (!user) throw new Error('Sign in again before downloading this PDF.');
+        const idToken = await user.getIdToken();
+        const response = await fetch('/api/pdf/download', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ recipe: effectivePdfPayload.recipe }),
+        });
+        if (!response.ok) {
+          const detail = await response.json().catch(() => ({}));
+          throw new Error(detail.error || `Download failed (${response.status})`);
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = effectivePdfPayload.filename || 'document.pdf';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        return;
+      }
       if (effectivePdfPayload.downloadUrl) {
         const response = await fetch(effectivePdfPayload.downloadUrl);
         if (!response.ok) {
@@ -417,22 +445,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ id, chatId, type, role
         URL.revokeObjectURL(url);
         return;
       }
-      if (!effectivePdfPayload.base64Data) return;
-      const binaryString = window.atob(effectivePdfPayload.base64Data);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      if (effectivePdfPayload.base64Data) {
+        const binaryString = window.atob(effectivePdfPayload.base64Data);
+        const bytes = Uint8Array.from(binaryString, (character) => character.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = effectivePdfPayload.filename || 'document.pdf';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       }
-      const blob = new Blob([bytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = effectivePdfPayload.filename || 'schedule.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (e) {
       console.error(e);
       toast({

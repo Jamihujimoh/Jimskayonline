@@ -33,18 +33,19 @@ import { runPcControl } from '@/ai/lib/pc-control-core';
  *    guards, full-colour printing, widows/orphans control.
  */
 
-const PdfInputSchema = z.object({
-  filename: z.string(),
-  title: z.string(),
+export const PdfInputSchema = z.object({
+  filename: z.string().min(1).max(180),
+  title: z.string().min(1).max(300),
   renderer: z.enum(['auto', 'html', 'mathjax', 'hybrid', 'xelatex']).default('auto').describe("Renderer selection: 'auto' keeps HTML styling and uses MiKTeX math when available or portable MathJax SVG otherwise; 'html' forces HTML/KaTeX; 'mathjax' forces portable MathJax SVG math; 'hybrid' forces HTML styling with MiKTeX math; 'xelatex' forces full MiKTeX typesetting."),
   // Accepts standard text, Markdown, LaTeX math/chemistry ($...$ / $$...$$), and HTML tables
-  content: z.string(),
+  content: z.string().max(90_000),
   // Optional dynamic styling parameters for AI customization
   accentColor: z
     .string()
+    .max(32)
     .optional()
     .describe('Hex color for main accents and section bars (e.g. #0f766e)'),
-  css: z.string().optional().describe('Custom CSS rules to override default document styling'),
+  css: z.string().max(20_000).optional().describe('Custom CSS rules to override default document styling'),
   // Optional header metadata used to build the structured key-value metadata block
   subtitle: z.string().optional().describe('Short subtitle/description shown under the title'),
   kicker: z.string().optional().describe('Small eyebrow/eyebrow label above the title (e.g. "CHEMISTRY MASTERCLASS")'),
@@ -55,7 +56,7 @@ const PdfInputSchema = z.object({
   version: z.string().optional().describe('Version label for the metadata grid (e.g. "v1.0")'),
 });
 
-type PdfInput = z.infer<typeof PdfInputSchema>;
+export type PdfInput = z.infer<typeof PdfInputSchema>;
 const execFileAsync = promisify(execFile);
 type MathJaxResult = { svg?: string; errors?: string[] };
 type MathJaxNodeApi = {
@@ -654,6 +655,13 @@ function stripDuplicateTitle(html: string, title: string): string {
   );
 }
 
+export function sanitizePdfContent(content: string): string {
+  return content
+    .replace(/<(figure|div|section|p)\b[^>]*>(?:\s|&nbsp;|&#160;|&#xA0;|<br\s*\/?>)*<\/\1>/gi, '')
+    .replace(/(?:\s*<(?:div|p)\b[^>]*(?:class\s*=\s*['"][^'"]*\bpage-break(?:-after)?\b[^'"]*['"]|style\s*=\s*['"][^'"]*(?:page-break-after\s*:\s*always|break-after\s*:\s*page)[^'"]*)[^>]*>\s*<\/(?:div|p)>)+\s*$/i, '')
+    .trimEnd();
+}
+
 /* ------------------------------------------------------------------ */
 /* HTML template builder (print-ready, publication-grade)             */
 /* ------------------------------------------------------------------ */
@@ -1170,8 +1178,9 @@ function buildDocumentHtml(input: PdfInput, renderMath = wrapMath): {
   const pageDate = escapeHtml(input.date || todayDisplay());
 
   // Auto contents block when the doc carries at least three top-level sections.
+  const sanitizedContent = sanitizePdfContent(input.content);
   const { tocHtml, html: tocContent } = buildTableOfContents(
-    stripDuplicateTitle(processMathAndChem(input.content, renderMath), input.title)
+    stripDuplicateTitle(processMathAndChem(sanitizedContent, renderMath), input.title)
   );
 
   // Build the structured header metadata grid from provided fields (date always defaults).
@@ -1418,8 +1427,7 @@ function buildDocumentHtml(input: PdfInput, renderMath = wrapMath): {
       .toc-main a:hover, .toc-sub a:hover { background: var(--accent-soft2); }
 
       /* ------------------------------ Body ------------------------------ */
-      .doc-body { padding: 0 28px 34px 28px; }
-      .doc-body::after { content: ''; display: block; height: 18px; }
+      .doc-body { padding: 0 28px 18px 28px; }
 
       h1, h2, h3, h4, h5, h6 {
         font-family: var(--sans);
@@ -1728,10 +1736,8 @@ async function resolvePdfBrowserExecutable(): Promise<PdfBrowserResolution> {
       'PDF Generation Failed: No Chrome, Edge or Chromium was found. Install Google Chrome or Microsoft Edge (or set CHROME_PATH) and try again.'
     );
   }
-  console.log('[PDF-ENGINE] No installed browser found — downloading @sparticuz/chromium (first render can be slow)...');
-  const executablePath = await chromium.executablePath(
-    'https://github.com/sparticuz/chromium/releases/download/v126.0.0/chromium-v126.0.0-pack.tar'
-  );
+  console.log('[PDF-ENGINE] No installed browser found — extracting bundled @sparticuz/chromium.');
+  const executablePath = await chromium.executablePath();
   return { executablePath, chromiumArgs: [...chromium.args, '--single-process'] };
 }
 
@@ -1806,6 +1812,66 @@ export async function generatePdfInMemory(input: PdfInput) {
 
     const page = await browser.newPage();
     await page.setContent(fullHtml, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.evaluate(() => {
+      const body = document.querySelector('.doc-body');
+      if (!body) return;
+
+      for (const image of body.querySelectorAll('img')) {
+        if (!image.getAttribute('src') || (image.complete && image.naturalWidth === 0)) image.remove();
+      }
+
+      const hasVisibleContent = (element: Element) => Boolean(
+        element.textContent?.replace(/\u00a0/g, ' ').trim()
+        || element.querySelector('img, svg path, svg circle, svg rect, svg line, svg polygon, canvas, video[src], iframe, table')
+      );
+      for (const element of body.querySelectorAll('figure, [class*="placeholder" i], [id*="placeholder" i]')) {
+        if (!hasVisibleContent(element)) element.remove();
+      }
+
+      const emptyPanels = [...body.querySelectorAll('div, section')].filter((element) => {
+        if (hasVisibleContent(element)) return false;
+        const bounds = element.getBoundingClientRect();
+        if (bounds.width < 280 || bounds.height < 160) return false;
+        const style = getComputedStyle(element);
+        return style.backgroundImage !== 'none'
+          || (style.backgroundColor !== 'transparent' && style.backgroundColor !== 'rgba(0, 0, 0, 0)');
+      });
+      for (const element of emptyPanels) element.remove();
+
+      while (body.lastElementChild?.matches('.page-break, .page-break-after, [style*="page-break-after: always"], [style*="break-after: page"]')) {
+        body.lastElementChild.remove();
+      }
+    });
+    await page.evaluate(() => {
+      const body = document.querySelector('.doc-body');
+      if (!body) return;
+
+      for (const image of body.querySelectorAll('img')) {
+        if (!image.getAttribute('src') || (image.complete && image.naturalWidth === 0)) image.remove();
+      }
+
+      const hasVisibleContent = (element: Element) => Boolean(
+        element.textContent?.replace(/\u00a0/g, ' ').trim()
+        || element.querySelector('img, svg path, svg circle, svg rect, svg line, svg polygon, canvas, video[src], iframe, table')
+      );
+      for (const element of body.querySelectorAll('figure, [class*="placeholder" i], [id*="placeholder" i]')) {
+        if (!hasVisibleContent(element)) element.remove();
+      }
+
+      const emptyPanels = [...body.querySelectorAll('div, section')].filter((element) => {
+        if (hasVisibleContent(element)) return false;
+        const bounds = element.getBoundingClientRect();
+        if (bounds.width < 280 || bounds.height < 160) return false;
+        const style = getComputedStyle(element);
+        return style.backgroundImage !== 'none'
+          || (style.backgroundColor !== 'transparent' && style.backgroundColor !== 'rgba(0, 0, 0, 0)');
+      });
+      for (const element of emptyPanels) element.remove();
+
+      while (body.lastElementChild?.matches('.page-break, .page-break-after, [style*="page-break-after: always"], [style*="break-after: page"]')) {
+        body.lastElementChild.remove();
+      }
+    });
 
     // Print-safe: shrink any display math wider than its block so long equations
     // never clip horizontally (overflow-x is not scrollable in a PDF).
@@ -1862,5 +1928,4 @@ export async function generatePdfInMemory(input: PdfInput) {
   }
 }
 
-export { PdfInputSchema, processMathAndChem, buildDocumentHtml, buildXeLatexSource };
-export type { PdfInput };
+export { processMathAndChem, buildDocumentHtml, buildXeLatexSource };

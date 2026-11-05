@@ -33,6 +33,7 @@ import { performSpatialOcr } from '@/ai/flows/ocr-forge-flow';
 import { actionKey, runOnce } from '@/ai/lib/admin-action-coordinator';
 import { isChatModelId } from '@/lib/chat-models';
 import { ANDROID_AGENT_ACTIONS, getAndroidPhoneTaskStatus, runAndroidAgentTask } from '@/ai/lib/local-agent-bridge';
+import { PhoneAgentInputSchema } from '@/ai/lib/phone-agent-schema';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -1193,7 +1194,7 @@ export async function adminChat(input: {
       description: 'Queue an action for the user\'s paired Android phone through the installed Jimskay companion. The result is pending with a task ID and confirms queueing only, not completion. In Ask permission mode, request approval for one phone action at a time; user approval can never bypass Android system permissions or the application sandbox.',
       inputSchema: z.object({
         action: z.enum(ANDROID_AGENT_ACTIONS),
-        input: z.record(z.string(), z.unknown()).optional(),
+        input: PhoneAgentInputSchema.optional(),
         timeoutMs: z.number().optional(),
       }),
       outputSchema: z.object({

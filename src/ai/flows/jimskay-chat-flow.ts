@@ -4,10 +4,10 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { MAX_OUTPUT_TOKENS, MODEL_IDS, continuationPrompt, pickLadder, withAutoContinue } from '@/ai/model-router';
 import { webSearchTool } from './web-search-core';
-import { generatePdfInMemory } from './pdf-engine';
+import { PdfInputSchema, type PdfInput } from './pdf-engine';
 import { generateVideo } from './generate-video-flow';
 import { ANDROID_AGENT_ACTIONS, getAndroidPhoneTaskStatus, runAndroidAgentTask, runLocalAgentTask } from '@/ai/lib/local-agent-bridge';
-import { stagePdf } from './pdf-file-store';
+import { PhoneAgentInputSchema } from '@/ai/lib/phone-agent-schema';
 import { stageVideo } from './video-file-store';
 import { isChatModelId } from '@/lib/chat-models';
 import { extractChatArtifact, hasMeaningfulVisualContent, hasResponsiveVisualStructure, hasUnrequestedGameUi, lacksAutoplayAnimation, matchesRequestedSubject, type ChatArtifact } from '@/lib/chat-artifacts';
@@ -146,43 +146,6 @@ function stripNullishValues<T>(value: T): T {
   return value;
 }
 
-const PhoneActionArgsSchema = z.object({
-  actionName: z.string().optional(),
-  app: z.string().optional(),
-  confirm: z.boolean().optional(),
-  content: z.string().optional(),
-  destination: z.string().optional(),
-  direction: z.string().optional(),
-  distance: z.number().optional(),
-  durationMs: z.number().optional(),
-  endX: z.number().optional(),
-  endY: z.number().optional(),
-  expected: z.array(z.string()).optional(),
-  fieldLabel: z.string().optional(),
-  intentAction: z.string().optional(),
-  intentData: z.string().optional(),
-  key: z.string().optional(),
-  mimeType: z.string().optional(),
-  packageName: z.string().optional(),
-  path: z.string().optional(),
-  query: z.string().optional(),
-  source: z.string().optional(),
-  startX: z.number().optional(),
-  startY: z.number().optional(),
-  text: z.string().optional(),
-  url: z.string().optional(),
-  x: z.number().optional(),
-  y: z.number().optional(),
-}).passthrough();
-
-const PhoneAgentInputSchema = PhoneActionArgsSchema.extend({
-  steps: z.array(z.object({
-    action: z.string(),
-    args: PhoneActionArgsSchema.optional(),
-    observeAfter: z.boolean().optional(),
-  }).passthrough()).optional(),
-});
-
 // Dynamic prompt compiler based on operational modes
 function compileSystemPrompt(mode: string = 'normal') {
   const basePrompt = `
@@ -225,7 +188,8 @@ MISSION COORDINATION PROTOCOL (TODO PLANNING):
 - Use 3-8 todos for meaningful work; skip [TODOS] entirely for trivial single-answer replies.
 
 PDF COMPILATION PROTOCOL:
-- You have direct access to the \`pdfGeneratorTool\` to compile custom PDF documents.
+- You have direct access to the \`pdfGeneratorTool\` to prepare custom PDF documents.
+- When the tool succeeds, do not invent or emit a Markdown download URL. The app will attach an authenticated PDF download button.
 - Only use this tool when the latest user message explicitly asks for a PDF, document, schedule, or timetable. Never create one for an unrelated request.
 - STRUCTURED METADATA: Fill the header metadata fields whenever relevant: \`kicker\` (small eyebrow label, e.g. "POST-UTME CHEMISTRY MASTERCLASS"), \`subtitle\`, \`subject\`, \`documentType\`, \`version\`, \`author\`, \`date\`, and \`accentColor\` (choose a tasteful hex accent that fits the topic). The header block renders these automatically; never repeat them inside the content.
 - HEADINGS: Begin every section with \`## Section Name\` (major section) or \`### Subtopic Name\` (subtopic). NEVER use a single \`#\` heading in content: the document title is rendered from the \`title\` field alone, so do not echo the title as a heading.
@@ -396,7 +360,7 @@ export async function jimskayChat(input: z.infer<typeof JimskayInputSchema>) {
         ? [selectedModel, ...pickLadder('ask', input.currentUser?.isVerifiedCreator === true).filter((model) => model !== selectedModel)]
         : undefined;
 
-  let interceptedPdf: { downloadUrl: string; filename: string } | undefined = undefined;
+  let interceptedPdf: PdfInput | undefined = undefined;
 
   const localPdfTool = ai.defineTool(
   {
@@ -406,7 +370,7 @@ export async function jimskayChat(input: z.infer<typeof JimskayInputSchema>) {
       filename: z.string().describe("Descriptive slug filename ending in .pdf, e.g. silicon-chemistry.pdf"),
       title: z.string().describe("The primary title header (do NOT repeat it as a # heading inside content)."),
       renderer: z.enum(['auto', 'html', 'mathjax', 'hybrid', 'xelatex']).optional().default('auto').describe("Leave as 'auto': keeps HTML styling and uses MiKTeX math when available, otherwise portable MathJax SVG. Force 'mathjax', 'hybrid', 'xelatex', or 'html' only if the user explicitly demands an engine."),
-      content: z.string().describe("The document content. Supports Markdown headings (## / ###), LaTeX math ($...$ inline, $$...$$ blocks), **Label:** value bullets (auto-converted to multi-column key-value grids), numbered lists, Markdown or HTML tables, and <div class='page-break'></div> for explicit page splits."),
+      content: z.string().max(90_000).describe("The document content. Supports Markdown headings (## / ###), LaTeX math ($...$ inline, $$...$$ blocks), **Label:** value bullets (auto-converted to multi-column key-value grids), numbered lists, Markdown or HTML tables, and <div class='page-break'></div> for explicit page splits."),
       accentColor: z.string().optional().describe("Hex color for all accents and section bars (e.g. #0f766e teal, #2fbf71 green). Defaults to teal."),
       kicker: z.string().optional().describe("Small eyebrow label above the title (e.g. 'POST-UTME CHEMISTRY MASTERCLASS')."),
       subtitle: z.string().optional().describe("Short subtitle/description shown under the title."),
@@ -423,15 +387,11 @@ export async function jimskayChat(input: z.infer<typeof JimskayInputSchema>) {
       // Clean up and parse tables before rendering
       const cleanContent = formatPdfContentForTool(toolInput.content);
 
-      const result = await generatePdfInMemory({
+      interceptedPdf = PdfInputSchema.parse({
         ...toolInput,
         content: cleanContent,
       });
-
-      // The PDF can be very large. Keep its bytes on the server and pass only
-      // a short download URL through the AI/chat pipeline.
-      interceptedPdf = await stagePdf(result.base64Data, result.filename);
-      return { filename: result.filename, status: "Success. Staged for download." };
+      return { filename: interceptedPdf.filename, status: "Success. The app will render the PDF when the user downloads it." };
     } catch (err: any) {
       return { filename: toolInput.filename, status: `Failed: ${err.message}` };
     }
@@ -665,7 +625,7 @@ MANDATORY VISUAL RESPONSE:
   // its output limit (finishReason 'length' / mid-sentence stop), withAutoContinue
   // silently issues follow-up rounds on the next key until the task is truly done.
   const outcome = await withAutoContinue<{
-    pdf?: { downloadUrl: string; filename: string };
+    pdf?: PdfInput;
     artifact?: ChatArtifact;
     visualLesson?: VisualLesson;
     updatedFile?: {
